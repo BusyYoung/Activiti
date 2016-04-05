@@ -35,6 +35,20 @@ public interface HistoricProcessInstance {
   /** The process definition reference. */
   String getProcessDefinitionId();
 
+  /** The name of the process definition of the process instance. */
+  String getProcessDefinitionName();
+  
+  /** The key of the process definition of the process instance. */
+  String getProcessDefinitionKey();
+  
+  /** The version of the process definition of the process instance. */
+  Integer getProcessDefinitionVersion();
+  
+  /**
+   * The deployment id of the process definition of the process instance.
+   */
+  String getDeploymentId();
+  
   /** The time the process was started. */
   Date getStartTime();
 
@@ -76,6 +90,17 @@ public interface HistoricProcessInstance {
    * The name for the process instance.
    */
   String getName();
+  
+  /**
+   * The description for the process instance.
+   */
+  String getDescription();
+  
+  /** Sets an optional localized name for the process instance. */
+  void setLocalizedName(String name);
+  
+  /** Sets an optional localized description for the process instance. */
+  void setLocalizedDescription(String description);
   
   /** Returns the process variables if requested in the process instance query */
   Map<String, Object> getProcessVariables();

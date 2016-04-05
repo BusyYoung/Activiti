@@ -24,6 +24,7 @@ import org.activiti.engine.impl.javax.el.DynamicBeanPropertyELResolver;
 import org.activiti.engine.impl.javax.el.ELContext;
 import org.activiti.engine.impl.javax.el.ELResolver;
 import org.activiti.engine.impl.javax.el.ExpressionFactory;
+import org.activiti.engine.impl.javax.el.JsonNodeELResolver;
 import org.activiti.engine.impl.javax.el.ListELResolver;
 import org.activiti.engine.impl.javax.el.MapELResolver;
 import org.activiti.engine.impl.javax.el.ValueExpression;
@@ -69,13 +70,11 @@ public class ExpressionManager {
   }
   
   public ExpressionManager(Map<Object, Object> beans, boolean initFactory) {
-	    // Use the ExpressionFactoryImpl in activiti build in version of juel, with parametrised method expressions enabled
-	    expressionFactory = new ExpressionFactoryImpl();
-	    this.beans = beans;
+    // Use the ExpressionFactoryImpl in activiti build in version of juel, with parametrised method expressions enabled
+    expressionFactory = new ExpressionFactoryImpl();
+    this.beans = beans;
   }
 
- 
-  
   public Expression createExpression(String expression) {
     ValueExpression valueExpression = expressionFactory.createValueExpression(parsingElContext, expression.trim(), Object.class);
     return new JuelExpression(valueExpression, expression);
@@ -120,6 +119,7 @@ public class ExpressionManager {
     elResolver.add(new ArrayELResolver());
     elResolver.add(new ListELResolver());
     elResolver.add(new MapELResolver());
+    elResolver.add(new JsonNodeELResolver());
     elResolver.add(new DynamicBeanPropertyELResolver(ItemInstance.class, "getFieldValue", "setFieldValue")); //TODO: needs verification
     elResolver.add(new BeanELResolver());
     return elResolver;

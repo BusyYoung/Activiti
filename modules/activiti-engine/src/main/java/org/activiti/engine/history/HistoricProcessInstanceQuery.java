@@ -20,7 +20,6 @@ import java.util.Set;
 
 import org.activiti.engine.ProcessEngineConfiguration;
 import org.activiti.engine.query.Query;
-import org.activiti.engine.runtime.ProcessInstanceQuery;
 
 /**
  * Allows programmatic querying of {@link HistoricProcessInstance}s.
@@ -53,6 +52,18 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
 
   /** Only select historic process instances that don't have a process-definition of which the key is present in the given list */
   HistoricProcessInstanceQuery processDefinitionKeyNotIn(List<String> processDefinitionKeys);
+
+  /** Only select historic process instances whose process definition category is processDefinitionCategory. */
+  HistoricProcessInstanceQuery processDefinitionCategory(String processDefinitionCategory);
+
+  /** Select process historic instances whose process definition name is processDefinitionName*/
+  HistoricProcessInstanceQuery processDefinitionName(String processDefinitionName);
+
+  /**
+   * Only select historic process instances with a certain process definition version.
+   * Particulary useful when used in combination with {@link #processDefinitionKey(String)}
+   */
+  HistoricProcessInstanceQuery processDefinitionVersion(Integer processDefinitionVersion);
 
   /** Only select historic process instances with the given business key */
   HistoricProcessInstanceQuery processInstanceBusinessKey(String processInstanceBusinessKey);
@@ -162,6 +173,16 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
    *          wildcard character '%' to express like-strategy: starts with
    *          (string%), ends with (%string) or contains (%string%). */
   HistoricProcessInstanceQuery variableValueLike(String name, String value);
+  
+  /** Only select process instances which had global variable value like (case insensitive)
+   * the given value when they ended. Only applies to already ended process instances,
+   * otherwise use a {@link ProcessInstanceQuery} instead! This can be used on string
+   * variables only.
+   * @param name cannot be null.
+   * @param value cannot be null. The string can include the
+   *          wildcard character '%' to express like-strategy: starts with
+   *          (string%), ends with (%string) or contains (%string%). */
+  HistoricProcessInstanceQuery variableValueLikeIgnoreCase(String name, String value);
 
   /** Only select historic process instances that were started before the given date. */
   HistoricProcessInstanceQuery startedBefore(Date date);
@@ -235,6 +256,11 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
   HistoricProcessInstanceQuery includeProcessVariables();
   
   /**
+   * Only select process instances that failed due to an exception happening during a job execution.
+   */
+  HistoricProcessInstanceQuery withJobException();
+  
+  /**
    * Only select process instances with the given name.
    */
   HistoricProcessInstanceQuery processInstanceName(String name);
@@ -248,4 +274,14 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
    * Only select process instances with a name like the given value, ignoring upper/lower case.
    */
   HistoricProcessInstanceQuery processInstanceNameLikeIgnoreCase(String nameLikeIgnoreCase);
+  
+  /**
+   * Localize historic process name and description to specified locale.
+   */
+  HistoricProcessInstanceQuery locale(String locale);
+  
+  /**
+   * Instruct localization to fallback to more general locales including the default locale of the JVM if the specified locale is not found. 
+   */
+  HistoricProcessInstanceQuery withLocalizationFallback();
 }

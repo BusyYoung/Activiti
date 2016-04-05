@@ -18,6 +18,7 @@ import org.activiti.engine.delegate.event.impl.ActivitiEventBuilder;
 import org.activiti.engine.impl.cmd.ExecuteAsyncJobCmd;
 import org.activiti.engine.impl.cmd.LockExclusiveJobCmd;
 import org.activiti.engine.impl.cmd.UnlockExclusiveJobCmd;
+import org.activiti.engine.impl.context.Context;
 import org.activiti.engine.impl.interceptor.Command;
 import org.activiti.engine.impl.interceptor.CommandConfig;
 import org.activiti.engine.impl.interceptor.CommandContext;
@@ -33,67 +34,94 @@ import org.slf4j.LoggerFactory;
  */
 public class ExecuteAsyncRunnable implements Runnable {
 
-	private static Logger log = LoggerFactory.getLogger(ExecuteAsyncRunnable.class);
+  private static Logger log = LoggerFactory.getLogger(ExecuteAsyncRunnable.class);
 
-	protected JobEntity job;
-	protected CommandExecutor commandExecutor;
+  protected JobEntity job;
+  protected CommandExecutor commandExecutor;
 
-	public ExecuteAsyncRunnable(JobEntity job, CommandExecutor commandExecutor) {
-		this.job = job;
-		this.commandExecutor = commandExecutor;
-	}
+  public ExecuteAsyncRunnable(JobEntity job, CommandExecutor commandExecutor) {
+    this.job = job;
+    this.commandExecutor = commandExecutor;
+  }
 
-	public void run() {
-	  
-	  try {
-  		if (job.isExclusive()) {
-  	    commandExecutor.execute(new LockExclusiveJobCmd(job));
-  	  }
-  		
-		} catch (Throwable lockException) { 
-      if (log.isDebugEnabled()) {
-      	log.debug("Exception during exclusive job acquisition. Retrying job.", lockException.getMessage());
+  public void run() {
+    boolean lockNotNeededOrSuccess = lockJobIfNeeded();
+    if (lockNotNeededOrSuccess) {
+      executeJob();
+      unlockJobIfNeeded();
+    }
+  }
+
+  /**
+   * Returns true if lock succeeded, or no lock was needed.
+   * Returns false if locking was unsuccessfull. 
+   */
+  protected boolean lockJobIfNeeded() {
+    try {
+      if (job.isExclusive()) {
+        commandExecutor.execute(new LockExclusiveJobCmd(job));
       }
       
-      commandExecutor.execute(new Command<Void>() {
-      	public Void execute(CommandContext commandContext) {
-      		commandContext.getJobEntityManager().retryAsyncJob(job);
-      		return null;
-      	}
-      });
-      return;
+    } catch (Throwable lockException) { 
+      if (log.isDebugEnabled()) {
+        log.debug("Could not lock exclusive job. Unlocking job so it can be acquired again. Catched exception: " + lockException.getMessage());
+      }
+      
+      // Release the job again so it can be acquired later or by another node
+      unacquireJob();
+      
+      return false;
+    }
     
-		}
-		
-		try {
-			commandExecutor.execute(new ExecuteAsyncJobCmd(job));
-			
-		} catch (final ActivitiOptimisticLockingException e) {
-		  
-		  handleFailedJob(e);
-		  
-		  if (log.isDebugEnabled()) {
+    return true;
+  }
+
+  protected void unacquireJob() {
+    CommandContext commandContext = Context.getCommandContext();
+    if (commandContext != null) {
+      commandContext.getJobEntityManager().unacquireJob(job.getId());
+    } else {
+      commandExecutor.execute(new Command<Void>() {
+        public Void execute(CommandContext commandContext) {
+          commandContext.getJobEntityManager().unacquireJob(job.getId());
+          return null;
+        }
+      });
+    }
+  }
+  
+  protected void executeJob() {
+    try {
+      commandExecutor.execute(new ExecuteAsyncJobCmd(job));
+      
+    } catch (final ActivitiOptimisticLockingException e) {
+      
+      handleFailedJob(e);
+      
+      if (log.isDebugEnabled()) {
         log.debug("Optimistic locking exception during job execution. If you have multiple async executors running against the same database, " +
             "this exception means that this thread tried to acquire an exclusive job, which already was changed by another async executor thread." +
             "This is expected behavior in a clustered environment. " +
             "You can ignore this message if you indeed have multiple job executor threads running against the same database. " +
             "Exception message: {}", e.getMessage());
       }
-		  
-		} catch (Throwable exception) {
-		  handleFailedJob(exception);
+      
+    } catch (Throwable exception) {
+      handleFailedJob(exception);
        
       // Finally, Throw the exception to indicate the ExecuteAsyncJobCmd failed
       String message = "Job " + job.getId() + " failed";
       log.error(message, exception);
     }
-		
-		try {
-			if (job.isExclusive()) {
-			  commandExecutor.execute(new UnlockExclusiveJobCmd(job));
-			}
-			
-		} catch (ActivitiOptimisticLockingException optimisticLockingException) { 
+  }
+
+  protected void unlockJobIfNeeded() {
+    try {
+      if (job.isExclusive()) {
+        commandExecutor.execute(new UnlockExclusiveJobCmd(job));
+      }
+      
+    } catch (ActivitiOptimisticLockingException optimisticLockingException) { 
       if (log.isDebugEnabled()) {
         log.debug("Optimistic locking exception while unlocking the job. If you have multiple async executors running against the same database, " +
             "this exception means that this thread tried to acquire an exclusive job, which already was changed by another async executor thread." +
@@ -102,16 +130,13 @@ public class ExecuteAsyncRunnable implements Runnable {
             "Exception message: {}", optimisticLockingException.getMessage());
       }
       
-      return;
-    
     } catch (Throwable t) {
       log.error("Error while unlocking exclusive job " + job.getId(), t);
-      return;
     }
-	}
-	
-	protected void handleFailedJob(final Throwable exception) {
-	  commandExecutor.execute(new Command<Void>() {
+  }
+  
+  protected void handleFailedJob(final Throwable exception) {
+    commandExecutor.execute(new Command<Void>() {
 
       @Override
       public Void execute(CommandContext commandContext) {
@@ -137,5 +162,5 @@ public class ExecuteAsyncRunnable implements Runnable {
       }
       
     });
-	}
+  }
 }

@@ -115,24 +115,26 @@ public abstract class AbstractNativeQuery<T extends NativeQuery< ? , ? >, U> imp
   public Object execute(CommandContext commandContext) {
     if (resultType == ResultType.LIST) {
       return executeList(commandContext, getParameterMap(), 0, Integer.MAX_VALUE);
+      
     } else if (resultType == ResultType.LIST_PAGE) {
       Map<String, Object> parameterMap = getParameterMap();
       parameterMap.put("resultType", "LIST_PAGE");
       parameterMap.put("firstResult", firstResult);
       parameterMap.put("maxResults", maxResults);
       if (StringUtils.isNotBlank(ObjectUtils.toString(parameterMap.get("orderBy")))) {
-        parameterMap.put("orderBy", "RES." + parameterMap.get("orderBy"));
+        parameterMap.put("orderByColumns", "RES." + parameterMap.get("orderBy"));
       } else {
-        parameterMap.put("orderBy", "RES.ID_ asc");
+        parameterMap.put("orderByColumns", "RES.ID_ asc");
       }
       
       int firstRow = firstResult + 1;
       parameterMap.put("firstRow", firstRow);
       int lastRow = 0;
-      if(maxResults == Integer.MAX_VALUE) {
+      if (maxResults == Integer.MAX_VALUE) {
         lastRow = maxResults;
+      } else {
+        lastRow = firstResult + maxResults + 1;
       }
-      lastRow = firstResult + maxResults + 1;
       parameterMap.put("lastRow", lastRow);
       return executeList(commandContext, parameterMap, firstResult, maxResults);
     } else if (resultType == ResultType.SINGLE_RESULT) {

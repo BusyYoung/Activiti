@@ -23,6 +23,7 @@ import org.activiti.engine.history.HistoricTaskInstance;
 import org.activiti.engine.impl.context.Context;
 import org.activiti.engine.impl.db.BulkDeleteable;
 import org.activiti.engine.impl.db.PersistentObject;
+import org.apache.commons.lang3.StringUtils;
 
 
 /**
@@ -35,8 +36,10 @@ public class HistoricTaskInstanceEntity extends HistoricScopeInstanceEntity impl
   
   protected String executionId;
   protected String name;
+  protected String localizedName;
   protected String parentTaskId;
   protected String description;
+  protected String localizedDescription;
   protected String owner;
   protected String assignee;
   protected String taskDefinitionKey;
@@ -111,16 +114,30 @@ public class HistoricTaskInstanceEntity extends HistoricScopeInstanceEntity impl
     this.executionId = executionId;
   }
   public String getName() {
-    return name;
+    if (localizedName != null && localizedName.length() > 0) {
+      return localizedName;
+    } else {
+      return name;
+    }
   }
   public void setName(String name) {
     this.name = name;
   }
+  public void setLocalizedName(String name) {
+    this.localizedName = name;
+  }
   public String getDescription() {
-    return description;
+    if (localizedDescription != null && localizedDescription.length() > 0) {
+      return localizedDescription;
+    } else {
+      return description;
+    }
   }
   public void setDescription(String description) {
     this.description = description;
+  }
+  public void setLocalizedDescription(String description) {
+    this.localizedDescription = description;
   }
   public String getAssignee() {
     return assignee;
@@ -228,4 +245,16 @@ public class HistoricTaskInstanceEntity extends HistoricScopeInstanceEntity impl
   public void setQueryVariables(List<HistoricVariableInstanceEntity> queryVariables) {
     this.queryVariables = queryVariables;
   }
+  
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("HistoricTaskInstanceEntity[");
+    sb.append("id=").append(id);
+    sb.append(", name=").append(name);
+    sb.append("]");
+    return sb.toString();
+  }
+  
+  
 }
